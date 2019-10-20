@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://unpkg.com/konva@3.2.4/konva.min.js"></script>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <title>MST</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #aeafaf;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="#">Minimum Spanning Tree</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <div class="form-inline mr-auto mt-2 mt-lg-0">
+                <select class="form-control" id="algorithm" >
+                    <option>Prim Algorithm</option>
+                    <option>Kruskal Algoithm</option>
+                </select>
+                <button id="start" type="button" class="btn btn-success mx-4">Start</button>
+            </div>
+          <form id="content" class="form-inline my-2 my-lg-0">
+            <button onclick="handleAddNode()" type="button" class="btn my-2 my-sm-0 btn-outline-primary" id="addNode">Add Node</button>
+          </form>
+        </div>
+    </nav>
+    <div class="modal fade" id="instruction" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Notes</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    For adding new Nodes click on the gray area below.
+                </div>
+        </div>
+    </div>
+    </div>
+    <div id="container"></div>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/tinyqueue@2.0.0/tinyqueue.min.js"></script>
+    <script>
+        
+        //-------------------------------------------------------------------------------------------------------------------------------------
+        //---------------------------------------------------------------ALGORITHM-------------------------------------------------------------
+        $('#start').click(()=>{
+            let algo = document.getElementById('algorithm').value;
+            let arr = []
+            let vetrices = [];
+            for(edge of edges){
+                if(edge){
+                    vetrices.push(edge.start.index);
+                    vetrices.push(edge.end.index);
+                    edge.shape.stroke('#697571');
+                    layer.draw();
+                    arr.push({weight:edge.weight,index:edge.index,start:edge.start.index,end:edge.end.index});
+                }
+            }
+            if(algo==='Prim Algorithm'){
+                //prim
+                let src = vetrices[0];
+                
+                //init
+                let key = []
+                for(let i=0; i<nodes.length; i++){
+                    key.push(100000000);
+                }
+
+                let parent = []
+                for(let i=0; i<nodes.length; i++){
+                    parent.push(-1);
+                }
+
+                let inTree = []
+                for(let i=0; i<nodes.length; i++){
+                    inTree.push(false);
+                }
+                
+                var queue = new TinyQueue([{weight:0,index:src}],function(a,b){
+                    return a.weight-b.weight;
+                });
+
+                //relaxing
+                while (queue.length!==0) 
+                { 
+                    let u = queue.pop();
+                    u = u.index
+                    inTree[u] = true; 
+            
+                    for (edge of arr) 
+                    { 
+                        if(edge.start === u || edge.end === u){
+                            
+                            let V;
+                            if(edge.start === u){
+                                V = edge.end;
+                            }else{
+                                V = edge.start;
+                            }
+                            let weight = edge.weight; 
+                            if (inTree[V] === false && key[V] > weight) 
+                            {
+                                key[V] = weight; 
+                                queue.push({weight:key[V], index:V}); 
+                                parent[V] = u; 
+                            } 
+                        }
+                    } 
+                }
+
+                //output
+                for(edge of edges){
+                    if(parent[edge.start.index]===edge.end.index || parent[edge.end.index]===edge.start.index){
+                        edge.shape.stroke('red');
+                        layer.draw();
+                    }
+                }
+            }else{
+                //kruskal
+
+                //data structure
+                class DisjointSet{
+                    constructor(numElems){
+                        this.numSets = numElems;
+
+                        this.parents = [];  
+                        this.ranks   = []; 
+                        this.sizes   = []; 
+                        if (numElems < 0)
+                            throw "Number of elements must be non-negative";
+                        for (var i = 0; i < numElems; i++) {
+                            this.parents.push(i);
+                            this.ranks.push(0);
+                            this.sizes.push(1);
+                        }
+                    }
+	
+	
+                    getNumberOfElements = ()=> {
+                        return this.parents.length;
+                    };
+
+                    getNumberOfSets = ()=> {
+                        return this.numSets;
+                    };
+	
+	                getRepr(elemIndex) {
+                        if (elemIndex < 0 || elemIndex >= this.parents.length)
+                            throw "Element index out of bounds";
+
+                        var parent = this.parents[elemIndex];
+                        if (parent == elemIndex)
+                            return elemIndex;
+                        while (true) {
+                            var grandparent = this.parents[parent];
+                            if (grandparent == parent)
+                                return parent;
+                            this.parents[elemIndex] = grandparent;  
+                            elemIndex = parent;
+                            parent = grandparent;
+                        }
+                    }
+	
+                    getSizeOfSet = (elemIndex)=>{
+                        return this.sizes[this.getRepr(elemIndex)];
+                    };
+	
+                    areInSameSet = (elemIndex0, elemIndex1) => {
+                        return this.getRepr(elemIndex0) == this.getRepr(elemIndex1);
+                    };
+	
+
+                    mergeSets = (elemIndex0, elemIndex1)=> {
+                        var repr0 = this.getRepr(elemIndex0);
+                        var repr1 = this.getRepr(elemIndex1);
+                        if (repr0 == repr1)
+                            return false;
+                        
+                        var cmp = this.ranks[repr0] - this.ranks[repr1];
+                        if (cmp == 0)  
+                            this.ranks[repr0]++;
+                        else if (cmp < 0) { 
+                            var temp = repr0;
+                            repr0 = repr1;
+                            repr1 = temp;
+                        }
+                        
+                        this.parents[repr1] = repr0;
+                        this.sizes[repr0] += this.sizes[repr1];
+                        this.sizes[repr1] = 0;
+                        this.numSets--;
+                        return true;
+                    };
+	
+                    checkStructure = ()=> {
+                        var numRepr = 0;
+                        for (var i = 0; i < parents.length; i++) {
+                            var parent = this.parents[i];
+                            var rank = this.ranks[i];
+                            var size = this.sizes[i];
+                            var isRepr = parent == i;
+                            if (isRepr)
+                                numRepr++;
+                            
+                            var ok = true;
+                            ok = ok && 0 <= parent && parent < parents.length;
+                            ok = ok && 0 <= rank && (isRepr || rank < ranks[parent]);
+                            ok = ok && (!isRepr && size == 0 || isRepr && size >= (1 << rank));
+                            if (!ok)
+                                throw "Assertion error";
+                        }
+                        if (!(0 <= numSets && numSets == numRepr && numSets <= parents.length))
+                            throw "Assertion error";
+                    };
+                }
+
+                function compare(a, b) {
+                    return a.weight-b.weight;
+                }
+                //sorting the edges
+                arr.sort(compare);
+  
+               
+                let ds = new DisjointSet(nodes.length); 
+                let mst = [];
+                
+                //algorthm using disjoint set
+                for (edge of arr) 
+                { 
+                    let u = edge.start; 
+                    let v = edge.end 
+            
+                    let set_u = ds.getRepr(u); 
+                    let set_v = ds.getRepr(v); 
+            
+                    if (set_u != set_v) 
+                    {
+                        edges[edge.index].shape.stroke('red');
+                        layer.draw();
+            
+                        ds.mergeSets(set_u, set_v); 
+                    } 
+                }
+
+            }
+        })
+
+        //------------------------------------------------------------------------------------------------------------------------------------------------
+        //---------------------------------------------------------------------GRAPHIC--------------------------------------------------------------------
+
+        var layer = new Konva.Layer();
+        var edgeGroup = new Konva.Group();
+        var nodeGroup = new Konva.Group();
+        let addNode = false;
+        let addEdge = false;
+        let firstEdge = true;
+        let firstNode = true;
+
+        var nodes = [];
+        var edges = [];
+        var start = null;
+        var end = null;
+        var selectedEdge = null;
+
+        handleAddEdge = () =>{
+            if($('#addEdge').hasClass('btn-info')){
+                $('#addEdge').removeClass('btn-info');
+                $('#addEdge').addClass('btn-outline-info')
+                addEdge = false;
+            }else{
+                $('#addEdge').removeClass('btn-outline-info')
+                $('#addEdge').addClass('btn-info');
+                addEdge = true;
+                if(firstEdge){
+                    $('.modal-body').empty();
+                    $('.modal-body').append('For adding new Edge, click on some other node for creating a new Edge from the selected node to the node which has been clicked. <br /> For selecting an edge click on it.')
+                    $('#instruction').modal();
+                }
+                firstEdge = false;
+            }
+        }
+
+        handleAddNode = () =>{
+            
+            if($('#addNode').hasClass('btn-primary')){
+                $('#addNode').removeClass('btn-primary');
+                $('#addNode').addClass('btn-outline-primary')
+                addNode = false;
+            }else{
+                $('#addNode').removeClass('btn-outline-primary')
+                $('#addNode').addClass('btn-primary');
+                addNode = true;
+                if(firstNode){
+                    $('.modal-body').empty();
+                    $('.modal-body').append('For adding new Nodes click on the gray area below. <br /> For selecting a node click on it.')
+                    $('#instruction').modal();
+                }
+                firstNode = false;
+            }
+        }
+
+        handleDelete = ()=>{
+            start.shape.remove();
+            start.label.remove();
+            for(let i=0; i<edges.length; i++){
+                let edge = edges[i];
+                if(edge && (edge.start === start || edge.end === start)){
+                    edge.shape.remove();
+                    edge.label.remove();
+                    edges[i] = null;
+                }
+            }
+            nodes[start.index] = null;
+            start = null;
+            $('#content').empty();
+            $('#content').append(`
+            <button type="button" class="btn my-2 my-sm-0 ${addNode?'btn-primary':'btn-outline-primary'}" id="addNode">Add Node</button>
+            `)
+            layer.draw()
+        }
+
+        handleDeleteEdge = ()=>{
+            selectedEdge.shape.remove();
+            selectedEdge.label.remove();
+            edges[selectedEdge.index] = null;
+            selectedEdge = null;
+            $('#content').empty();
+            $('#content').append(`
+            <button type="button" class="btn my-2 my-sm-0 ${addNode?'btn-primary':'btn-outline-primary'}" id="addNode">Add Node</button>
+            `)
+            layer.draw()
+        }
+
+        handleChange = ()=>{
+            if(selectedEdge){
+                selectedEdge.weight = document.getElementById('weight').value
+                selectedEdge.label.getChildren()[0].setText(document.getElementById('weight').value)
+                layer.draw()
+            }
+        }
+        
+        class Node {
+            constructor(x, y) {
+                this.edges = []
+                this.index = nodes.length;
+                
+                this.shape = new Konva.Circle({
+                    x: x,
+                    y: y,
+                    radius: 15,
+                    fill: '#42f4b9',
+                    draggable: true
+                });
+                var simpleLabel = new Konva.Label({
+                    x:x-24,
+                    y:y-24,
+                });
+
+                simpleLabel.add(
+                    new Konva.Text({
+                    text: `${this.index}`,
+                    fontFamily: 'Calibri',
+                    fontSize: 14,
+                    fontWeight:800,
+                    fill: 'white'
+                    })
+                );
+                
+                this.label =simpleLabel;
+
+                this.shape.on('click', (evt) => {
+                    evt.cancelBubble = true;
+                    if(selectedEdge)
+                        selectedEdge.shape.stroke('#697571');
+                    selectedEdge = null;
+                    layer.draw()
+
+                    if(!addEdge && start){
+                        start.shape.strokeWidth(0);
+                        if(end)
+                            end.shape.strokeWidth(0);
+                        start = null;
+                        end = null;
+                        layer.draw();
+                        
+                    }
+                    if(start && (start===this || start===end)){
+                        start = null;
+                        this.shape.strokeWidth(0);
+                        if(end)
+                            end.shape.strokeWidth(0);
+                        layer.draw();
+                        end = null
+                    }
+                    if (!start) {
+                        start = this;
+                        this.shape.stroke('#3fa880');
+                        this.shape.strokeWidth(4);
+                        layer.draw();
+                        $('#content').empty();
+                        $('#content').append(`
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div class="mx-3 text-light">id: ${this.index}</div>
+                            <button id="delete" onclick="handleDelete()" type="button" class="btn btn-danger mx-3">Delete</button>
+                            <button id="addEdge" onclick="handleAddEdge()" type="button" class="btn mx-3 ${addEdge?'btn-info':'btn-outline-info'}">Add Edge</button>
+                        </div>
+                        `)
+                        if(end)
+                            end.shape.strokeWidth(0);
+                        layer.draw();
+                        end = null
+                    }
+                    else if (!end && start !== this )
+                        end = this;
+
+                    if (start && end) {
+                        var isConnected = false;
+                        for (var i = 0; i < edges.length; i++) {
+                            if (edges[i] && ((edges[i].start === start && edges[i].end === end) || (edges[i].end === start && edges[i].start === end))) {
+                                isConnected = true;
+                                break;
+                            }
+                        }
+                        if (!isConnected) {
+                            var edge = new Edge(start, end,edges.length);
+                            start.edges.push(edge);
+                            end.edges.push(edge);
+                            start.shape.strokeWidth(0);
+                            end.shape.strokeWidth(0);
+                            layer.draw();
+                            start = null;
+                            $('#content').empty();
+                            $('#content').append(`
+                            <button type="button" class="btn my-2 my-sm-0 ${addNode?'btn-primary':'btn-outline-primary'}" id="addNode">Add Node</button>
+                            `)
+
+                            end = null;
+                        }else{
+                            if (start)
+                                start.shape.strokeWidth(0);
+                            if (end)
+                                end.shape.strokeWidth(0);
+                            layer.draw();
+                            if(selectedEdge)
+                                selectedEdge.shape.stroke('#697571');
+                            layer.draw();
+                            start = this;
+                            this.shape.stroke('#3fa880');
+                            this.shape.strokeWidth(4);
+                            layer.draw();
+                            $('#content').empty();
+                            $('#content').append(`
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <div class="mx-3 text-light">id: ${this.index}</div>
+                                <button id="delete" onclick="handleDelete()" type="button" class="btn btn-danger mx-3">Delete</button>
+                                <button id="addEdge" onclick="handleAddEdge()" type="button" class="btn mx-3 ${addEdge?'btn-info':'btn-outline-info'}">Add Edge</button>
+                            </div>
+                            `)
+                            end = null
+                        }
+                        
+
+                    }
+                });
+                
+
+                this.shape.on('dragmove', (evt) => {
+                    evt.cancelBubble = true;
+
+                    this.label.setX(this.shape.getX()-24);
+                    this.label.setY(this.shape.getY()-24);
+                    this.edges.forEach(edge => {
+                        var points = edge.shape.getPoints();
+                        
+                        let start,end;
+                        
+                        if (edge.start === this) {
+                            points[0] = this.shape.getX();
+                            points[1] = this.shape.getY();
+                            start = this;
+                            end = edge.end;
+                        } else {
+                            points[2] = this.shape.getX();
+                            points[3] = this.shape.getY();
+                            end = this;
+                            start = edge.start;
+                        }
+                        
+                        let midx = (start.shape.getX()+end.shape.getX())/2;
+                        let midy = (start.shape.getY()+end.shape.getY())/2 - 30;
+                        edge.label.setX(midx);
+                        edge.label.setY(midy);
+                        edge.shape.setPoints(points);
+                        layer.draw();
+                    });
+
+                });
+                nodes.push(this);
+                nodeGroup.add(this.shape,this.label).draw();
+            }
+        }
+
+        class Edge {
+            constructor(start, end,index) {
+                this.weight = Math.random()*50+10;
+                this.next = null;
+                this.index = index;
+                this.start = start;
+                this.end = end;
+
+                let midx = (start.shape.getX()+end.shape.getX())/2;
+                let midy = (start.shape.getY()+end.shape.getY())/2 - 30;
+
+                var shape = new Konva.Line({
+                    points: [start.shape.getX(), start.shape.getY(), end.shape.getX(), end.shape.getY()],
+                    stroke: '#697571',
+                    strokeWidth: 12,
+                    lineCap: 'round',
+                    lineJoin: 'round'
+                });
+
+                var simpleLabel = new Konva.Label({
+                    x:midx,
+                    y:midy,
+                });
+
+                simpleLabel.add(
+                    new Konva.Text({
+                    text: `${this.weight.toFixed(2)}`,
+                    fontFamily: 'Calibri',
+                    fontSize: 14,
+                    fontWeight:800,
+                    fill: 'white'
+                    })
+                );
+                
+                this.label =simpleLabel;
+                this.shape = shape;
+                this.shape.on('click', evt => {
+                    evt.cancelBubble = true;
+                    if(start)
+                        start.shape.strokeWidth(0);
+                    if(end)
+                        end.shape.strokeWidth(0); 
+                    layer.draw();
+                    start = null;
+                    end = null
+
+                    if(selectedEdge)
+                        selectedEdge.shape.stroke('#697571');
+                    selectedEdge = null;
+                    layer.draw()
+    
+                    selectedEdge = this;
+
+                    this.shape.stroke('blue');
+                    layer.draw();
+                    $('#content').empty();
+                    $('#content').append(`
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <div class="mx-3 text-light">id: ${this.index}</div>
+                        <input onkeydown="handleChange()" onchange="handleChange()" id="weight" class="form-control mr-sm-2" type="number" value=${parseFloat(this.weight).toFixed(2)} aria-label="weight">
+                        <button id="addEdge" onclick="handleDeleteEdge()" type="button" class="btn btn-danger mx-3">Delete</button>
+                    </div>
+                    `)
+                })
+                edges.push(this);
+                edgeGroup.add(shape,this.label).draw();
+                start.shape.moveToTop();
+                start.label.moveToTop();
+                end.shape.moveToTop();
+                end.label.moveToTop();
+                
+                layer.draw();
+            }
+
+
+        }
+
+        var stage = new Konva.Stage({
+            container: 'container',
+            width: window.innerWidth,
+            height: window.innerHeight
+        });
+
+        stage.on('click', function (evt) {
+            if(addNode){
+                var positon = stage.getPointerPosition();
+                const node = new Node(positon.x, positon.y);
+                if (start)
+                    start.shape.strokeWidth(0);
+                layer.draw();
+                start = null;
+                if(selectedEdge)
+                    selectedEdge.shape.stroke('#697571');
+                layer.draw();
+                selectedEdge = null;
+                $('#content').empty();
+                $('#content').append(`
+                <button type="button" class="btn my-2 my-sm-0 ${addNode?'btn-primary':'btn-outline-primary'}" id="addNode">Add Node</button>
+                `)
+                end = null;
+            }
+        });
+
+
+        layer.add(edgeGroup);
+        layer.add(nodeGroup);
+        // add the layer to the stage
+        stage.add(layer);
+    </script>
+</body>
+
+</html>

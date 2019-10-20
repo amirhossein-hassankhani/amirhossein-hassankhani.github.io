@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://unpkg.com/konva@3.2.4/konva.min.js"></script>
+    <meta charset="utf-8" />
+    <title>Bipartite Matching</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #aeafaf;
+        }
+    </style>
+</head>
+
+<body>
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+        <button onclick="findMatching()">Solve</button>
+    </div>
+    <div id="container"></div>
+    <script>
+        alert("**The input graph should be bipartite\n**For adding nodes click on the Page\n**For adding Edge first click on the first node then after selecting the first node click on the other node\nTo see the result of matching click on the solve button")
+        //for graphic
+        var layer = new Konva.Layer();
+        var edgeGroup = new Konva.Group();
+        var nodeGroup = new Konva.Group();
+
+
+        var nodes = [];
+        var edges = [];
+        var start = null;
+        var end = null;
+
+        //finding matching 
+        function findMatching() {
+            //converting the adj list to adj matrix
+            var x = new Array(nodes.length);
+            for (var i = 0; i < x.length; i++) {
+                x[i] = new Array(nodes.length);
+                x[i].fill(0);
+            }
+            edges.forEach(edge => {
+                x[edge.start.index][edge.end.index] = 1;
+                x[edge.end.index][edge.start.index] = 1;
+            })
+
+            //making the graph biparted and find A and B section
+            A = new Set([0]);
+            B = new Set();
+            for (var i = 0; i < nodes.length; i++) {
+                for (var j = 0; j < nodes.length; j++) {
+                    if (x[i][j] == 1 && A.has(i)) {
+                        B.add(j)
+                    } else if (x[i][j] == 1 && B.has(j)) {
+                        A.add(i)
+                    } else if (x[i][j] == 1 && B.has(i)) {
+                        A.add(j)
+                    } else if (x[i][j] == 1 && A.has(j)) {
+                        B.add(i)
+                    } else if (x[i][j] == 1) {
+                        A.add(i)
+                        B.add(j)
+                    }
+                }
+            }
+
+            //creating an adj list for directed graph
+            //from A -> B not in matching
+            //from B -> A in matching
+            adj_list = new Array(nodes.length);
+            for (var i = 0; i < nodes.length; i++) {
+                adj_list[i] = []
+                if (A.has(i)) {
+
+                    for (var j = 0; j < nodes.length; j++) {
+                        if (x[i][j] === 1) {
+                            adj_list[i].push(j)
+                        }
+                    }
+                }
+            }
+
+            //start point of algorithm
+            visited_A = new Set();
+            while (true) {
+                //get all the exposed node in A
+                A_exposed = getAExposed()
+                for(let i=0; i<A_exposed.length; i++){
+                    if(visited_A.has(A_exposed[i])){
+                        A_exposed.splice(i,1);
+                        i--;
+                    }
+                }
+                if (A_exposed.length === 0) {
+                    break
+                }
+
+                //pick one of them
+                u = A_exposed.pop()
+                //put it in queue for BFS
+                queue = [u]
+                visited_A.add(u)
+                //record each node parent for finding path
+                parent = new Array(nodes.length)
+                parent.fill(-1)
+                visited = new Set([u])
+                last = null
+                
+                while (true) {
+                    if (queue.length === 0) {
+                        break;
+                    }
+                    //pick the first item
+                    p = queue.shift()
+                    //if it is exposed and it's not the node which we started from we found our exposed node
+                    if (isExposed(p) && p !== u) {
+                        last = p
+                        break;
+                    }
+                    //otherwise find all the children of p and add them to queue (if they are not visited already)
+                    for (var i = 0; i < adj_list[p].length; i++) {
+                        if (!visited.has(adj_list[p][i])) {
+                            queue.push(adj_list[p][i])
+                            parent[adj_list[p][i]] = p
+                            visited.add(adj_list[p][i])
+                        }
+
+                    }
+                }
+                
+                if(last){
+                    //construct the path with regards to recoreded parent (starting from last node)
+                    path = []
+                    while (last !== -1) {
+                        path.push(last)
+                        last = parent[last]
+                    }
+                    //augment the path (by changing the directio of the given edge)
+                    for (var i = 0; i < path.length - 1; i++) {
+                        a = path[i]
+                        b = path[i + 1]
+
+                        if (adj_list[a].includes(b)) {
+                            index = adj_list[a].indexOf(b)
+                            adj_list[a].splice(index, 1);
+                            adj_list[b].push(a)
+                        } else if (adj_list[b].includes(a)) {
+                            index = adj_list[b].indexOf(a)
+                            adj_list[b].splice(index, 1);
+                            adj_list[a].push(b)
+                        }
+                    }
+                }
+                
+            }
+            //mark the edges in matching with red
+            for (y of B) {
+
+                for (var i = 0; i < adj_list[y].length; i++) {
+                    for (var j = 0; j < edges.length; j++) {
+                        start_edge = edges[j].start.index
+                        end_edge = edges[j].end.index
+                        if ((y === start_edge && adj_list[y][i] === end_edge) || (y === end_edge && adj_list[y][i] === start_edge)) {
+                            edges[j].shape.stroke('red');
+                            layer.draw()
+                        }
+                    }
+                }
+            }
+
+        }
+
+        function isExposed(x) {
+
+            for (y of B) {
+                for (var j = 0; j < adj_list[y].length; j++) {
+                    v = adj_list[y][j]
+                    //if a node is in the adj list of edges from B to A then it is not exposed
+                    if (x === v || x === y) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        function getAExposed() {
+            not_exposed = new Set()
+            for(y of B){
+                for(v of adj_list[y]) {
+                    not_exposed.add(v)
+                }
+            }
+            exposed = []
+            for(y of A){
+                if (!not_exposed.has(y)) {
+                    exposed.push(y)
+                }
+            }
+            return exposed;
+        }
+
+        //from this point onward all the code is for graphic purposes and getting the input graph
+        class Node {
+            constructor(x, y) {
+                this.edges = []
+                this.index = nodes.length;
+                this.shape = new Konva.Circle({
+                    x: x,
+                    y: y,
+                    radius: 15,
+                    fill: '#42f4b9',
+                    draggable: true
+                });
+                this.shape.on('click', (evt) => {
+                    evt.cancelBubble = true;
+                    if (!start) {
+                        start = this;
+                        this.shape.stroke('#3fa880');
+                        this.shape.strokeWidth(4);
+                        layer.draw();
+                    }
+                    else if (!end && start != this)
+                        end = this;
+                    if (start && end) {
+                        var isConnected = false;
+                        for (var i = 0; i < edges.length; i++) {
+                            if ((edges[i].start === start && edges[i].end === end) || (edges[i].end === start && edges[i].start === end)) {
+                                isConnected = true;
+                                break;
+                            }
+                        }
+                        if (!isConnected) {
+                            var edge = new Edge(start, end);
+                            start.edges.push(edge);
+                            end.edges.push(edge);
+                        }
+                        start.shape.strokeWidth(0);
+                        layer.draw();
+                        start = null;
+                        end = null;
+
+                    }
+                });
+                this.shape.on('dragmove', (evt) => {
+                    evt.cancelBubble = true;
+                    this.edges.forEach(edge => {
+                        var points = edge.shape.getPoints();
+                        var position = stage.getPointerPosition();
+                        if (edge.start === this) {
+                            points[0] = this.shape.getX();
+                            points[1] = this.shape.getY();
+                        } else {
+                            points[2] = this.shape.getX();
+                            points[3] = this.shape.getY();
+                        }
+                        edge.shape.setPoints(points);
+                        layer.draw();
+                    });
+
+                });
+                nodes.push(this);
+                nodeGroup.add(this.shape).draw();
+            }
+        }
+
+        class Edge {
+            constructor(start, end) {
+                this.start = start;
+                this.end = end;
+                var shape = new Konva.Line({
+                    points: [start.shape.getX(), start.shape.getY(), end.shape.getX(), end.shape.getY()],
+                    stroke: '#697571',
+                    strokeWidth: 8,
+                    lineCap: 'round',
+                    lineJoin: 'round'
+                });
+                this.shape = shape;
+                edges.push(this);
+                edgeGroup.add(shape).draw();
+                start.shape.moveToTop();
+                end.shape.moveToTop();
+                layer.draw();
+            }
+        }
+
+        var stage = new Konva.Stage({
+            container: 'container',
+            width: window.innerWidth,
+            height: window.innerHeight
+        });
+
+        stage.on('click', function (evt) {
+            var positon = stage.getPointerPosition();
+            const node = new Node(positon.x, positon.y);
+            if (start)
+                start.shape.strokeWidth(0);
+            layer.draw();
+            start = null;
+            end = null;
+        });
+
+
+        layer.add(edgeGroup);
+        layer.add(nodeGroup);
+        // add the layer to the stage
+        stage.add(layer);
+    </script>
+</body>
+
+</html>
